@@ -21,5 +21,5 @@ from app1.views import*
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('pilot_feedtray_view/',pilot_feedtray_view),
-    path('get_base_value/',get_base_value)
+    path('get_recent_cycle_data/',get_data_from_recent_blank_cycle)
 ]

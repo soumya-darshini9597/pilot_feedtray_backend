@@ -21,32 +21,6 @@ def on_connect(client, userdata, flags, rc):
     else:
         print(f"Failed to connect. Code: {rc}")
 
-# Callback when message is received
-
-# def on_message(client, userdata, msg):
-#     try:
-#         payload = msg.payload.decode('utf-8')  
-#         print(f"Received payload: {payload}")
-
-#         # Try to parse payload as float (assuming it's a simple number)
-#         try:
-#             base_value = float(payload)
-#         except ValueError:
-#             print("Invalid payload: Not a number")
-#             return
-
-#         # Check if any previous record exists
-#         last_entry = Pilot_Feedtray.objects.order_by('-timestamp').first()
-
-#         # Allow storing only if there's no record or the remaining/base value is zero
-#         if not last_entry or float(last_entry.remaining_value or last_entry.base_value) == 0:
-#             Pilot_Feedtray.objects.create(base_value=base_value)
-#             print(f"Stored new base_value: {base_value}")
-#         else:
-#             print(f"Skipped storing. Current remaining/base is not zero: {last_entry.remaining_value or last_entry.base_value}")
-
-#     except Exception as e:
-#         print(f"Error processing message: {e}")
 def on_message(client, userdata, msg):
     try:
         payload = msg.payload.decode('utf-8')  
@@ -58,27 +32,24 @@ def on_message(client, userdata, msg):
             print("Invalid payload: Not a number")
             return
 
+        # Get last record
         last_entry = Pilot_Feedtray.objects.order_by('-timestamp').first()
 
-        # Store only if previous cycle is completed
-        print("1111111111111111111")
+        # Check if we need to start a new cycle
         if not last_entry or float(last_entry.remaining_value or last_entry.base_value) == 0:
-            print("2000000000000")
+            # New base cycle – store with cycle_count = 0
             Pilot_Feedtray.objects.create(
-                
                 base_value=str(base_value),
                 intial_value=str(base_value),
-                remaining_value=str(base_value)
+                remaining_value=str(base_value),
+                cycle_count='0'
             )
-
-            print(f"Stored base_value, intial_value, and remaining_value: {base_value}")
+            print(f"Stored new cycle with cycle_count = 0 and base_value = {base_value}")
         else:
             print(f"Skipped storing. Previous remaining/base value not zero: {last_entry.remaining_value or last_entry.base_value}")
 
     except Exception as e:
         print(f"Error processing message: {e}")
-
-
 
 
 # MQTT connection starter
