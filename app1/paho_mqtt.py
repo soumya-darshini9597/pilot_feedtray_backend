@@ -22,22 +22,32 @@ def on_connect(client, userdata, flags, rc):
         print(f"Failed to connect. Code: {rc}")
 
 # Callback when message is received
+
 def on_message(client, userdata, msg):
     try:
-        today = date.today()
+        payload = msg.payload.decode('utf-8')  
+        print(f"Received payload: {payload}")
 
-        # # Delete entries not from today (using timestamp field)
-        # Pilot_Feedtray.objects.exclude(timestamp__date=today).delete()
+        # Try to parse payload as float (assuming it's a simple number)
+        try:
+            base_value = float(payload)
+        except ValueError:
+            print("Invalid payload: Not a number")
+            return
 
-        payload = msg.payload.decode('utf-8')
-        base_value = (payload)
-        print(f"Storing: {base_value}")
+        # Check if any previous record exists
+        last_entry = Pilot_Feedtray.objects.order_by('-timestamp').first()
 
-        # Save to database
-        Pilot_Feedtray.objects.create(base_value)
+        # Allow storing only if there's no record or the remaining/base value is zero
+        if not last_entry or float(last_entry.remaining_value or last_entry.base_value) == 0:
+            Pilot_Feedtray.objects.create(base_value=base_value)
+            print(f"Stored new base_value: {base_value}")
+        else:
+            print(f"Skipped storing. Current remaining/base is not zero: {last_entry.remaining_value or last_entry.base_value}")
 
     except Exception as e:
         print(f"Error processing message: {e}")
+
 
 # MQTT connection starter
 def mqtt_connect():
