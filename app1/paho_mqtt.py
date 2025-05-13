@@ -1,9 +1,9 @@
 import time
-import json
 import paho.mqtt.client as mqtt
+from django.http import JsonResponse
 from datetime import date
 from django.utils.timezone import now
-from .models import Pilot_Feedtray  
+from .models import Pilot_Feedtray
 
 # MQTT Configuration
 MQTT_BROKER = 'mqttbroker.bc-pl.com'
@@ -16,41 +16,53 @@ MQTT_PASSWORD = 'Bfl@2025'
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected to MQTT broker.")
-        client.subscribe(MQTT_TOPIC)
+        client.subscribe(MQTT_TOPIC)  # Subscribe to the topic
         print(f"Subscribed to topic: {MQTT_TOPIC}")
     else:
         print(f"Failed to connect. Code: {rc}")
 
+# Callback when a message is received
 def on_message(client, userdata, msg):
     try:
-        payload = msg.payload.decode('utf-8')  
-        print(f"Received payload: {payload}")
+        payload = msg.payload.decode('utf-8')  # Decode the MQTT message payload
+        print(f"Storing Value: {payload}")
 
         try:
+            # Convert payload to float (assuming it's a numeric value)
             base_value = float(payload)
         except ValueError:
             print("Invalid payload: Not a number")
             return
 
-        # Get last record
+        # Get the last record from the database
         last_entry = Pilot_Feedtray.objects.order_by('-timestamp').first()
 
-        # Check if we need to start a new cycle
-        if not last_entry or float(last_entry.remaining_value or last_entry.base_value) == 0:
-            # New base cycle – store with cycle_count = 0
+        if not last_entry or float(last_entry.remaining_value or 0) == 0:
+            # If no last entry or remaining value is zero, create a new cycle.
+            print("Remaining value is zero or no previous data, starting a new cycle.")
+
+            # Insert a new cycle row to start fresh
             Pilot_Feedtray.objects.create(
                 base_value=str(base_value),
-                intial_value=str(base_value),
-                remaining_value=str(base_value),
-                cycle_count='0'
+                intial_value=str(base_value),  # Set initial value
+                remaining_value=str(base_value),  
+                cycle_count="0",  
+                cycle_value="0"  
             )
-            print(f"Stored new cycle with cycle_count = 0 and base_value = {base_value}")
+
+            print(f"New cycle created with base value: {base_value}")
+            return JsonResponse({
+                "message": "New cycle header row created.",
+                "base_value": base_value
+            })
+
         else:
-            print(f"Skipped storing. Previous remaining/base value not zero: {last_entry.remaining_value or last_entry.base_value}")
+            print(f"Last entry's remaining value: {last_entry.remaining_value}")
+            print(f"Cycle is still active, no action taken.")
+            return
 
     except Exception as e:
         print(f"Error processing message: {e}")
-
 
 # MQTT connection starter
 def mqtt_connect():
@@ -60,16 +72,18 @@ def mqtt_connect():
     client.on_message = on_message
 
     try:
+        # Connect to the MQTT broker
         client.connect(MQTT_BROKER, MQTT_PORT, 60)
     except Exception as e:
         print(f"Failed to connect to broker: {e}")
         return
 
+    # Start the loop to receive messages
     client.loop_start()
 
     try:
         while True:
-            time.sleep(1)
+            time.sleep(1)  
     except KeyboardInterrupt:
         print("Stopped by user.")
         client.loop_stop()

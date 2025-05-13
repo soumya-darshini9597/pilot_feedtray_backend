@@ -18,8 +18,12 @@ from django.contrib import admin
 from django.urls import path
 from app1.views import*
 
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('pilot_feedtray_view/',pilot_feedtray_view),
-    path('get_recent_cycle_data/',get_data_from_recent_blank_cycle)
+    path('get_recent_cycle_data/',get_recent_cycle_data),
+    path('filter_feedtray_data/',filter_feedtray_data),
+    path('download_feedtray_data/',download_feedtray_data)
+
 ]
